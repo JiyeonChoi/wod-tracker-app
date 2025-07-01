@@ -13,6 +13,7 @@ import {
 import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
+import * as Clipboard from "expo-clipboard";
 
 type Props = {
   grouped: Record<string, string[]>;
@@ -87,6 +88,12 @@ const GroupedExercises = ({ grouped }: Props) => {
     const updated = [...selected];
     updated.splice(index + 1, 0, newItem);
     setSelected(updated);
+  };
+
+  const handleCopyWorkout = () => {
+    const text = selected.map((item) => item.text).join("\n");
+    Clipboard.setStringAsync(text); // for expo-clipboard
+    // Clipboard.setString(text); // for react-native Clipboard
   };
 
   const renderItem = ({ item, drag, isActive, getIndex }: any) => {
@@ -169,6 +176,11 @@ const GroupedExercises = ({ grouped }: Props) => {
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
           />
+        )}
+        {selected.length > 0 && (
+          <TouchableOpacity style={styles.copyBtn} onPress={handleCopyWorkout}>
+            <Text style={styles.copyBtnText}>📋 Copy Workout</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -377,5 +389,16 @@ const styles = StyleSheet.create({
   },
   exerciseScrollContent: {
     paddingBottom: 80, // extra space to prevent last item from being hidden
+  },
+  copyBtn: {
+    backgroundColor: "#3b82f6",
+    padding: 10,
+    borderRadius: 6,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  copyBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
