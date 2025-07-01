@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import GroupedExercises from "../components/GroupedExercises";
 import { fetchGroupedExercises } from "../utils/api";
+import GroupedExercises from "../components/WODScreen/GroupedExercises";
 
-const HomeScreen = () => {
+const WODScreen = () => {
   const [groupedExercises, setGroupedExercises] = useState({});
   const [error, setError] = useState("");
 
@@ -31,7 +31,7 @@ const HomeScreen = () => {
   );
 };
 
-export default HomeScreen;
+export default WODScreen;
 
 const styles = StyleSheet.create({
   container: {
