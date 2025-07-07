@@ -9,11 +9,13 @@ import {
   UIManager,
   TextInput,
   ScrollView,
+  Modal,
 } from "react-native";
 import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
 import * as Clipboard from "expo-clipboard";
+import Icon from "react-native-vector-icons/FontAwesome5";
 
 type Props = {
   grouped: Record<string, string[]>;
@@ -29,26 +31,49 @@ if (
 type Item = {
   id: string;
   text: string;
+  setsReps?: string;
+};
+
+type SupersetGroup = {
+  id: string;
+  type: string; // e.g. "Superset of 2"
+  exercises: Item[];
 };
 
 const GroupedExercises = ({ grouped }: Props) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Item[]>([]);
+  const [supersets, setSupersets] = useState<SupersetGroup[]>([]);
   const [showExercises, setShowExercises] = useState(true);
-  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [focused, setFocused] = useState<{
+    groupId: string | null;
+    index: number | string | null;
+  }>({ groupId: null, index: null });
+
+  // For Sets & Reps modal
+  const [setsRepsModal, setSetsRepsModal] = useState<{
+    visible: boolean;
+    groupId: string | null;
+    index: number | null;
+    value: string;
+  }>({ visible: false, groupId: null, index: null, value: "" });
 
   useEffect(() => {
     const initialExpanded = Object.keys(grouped || {}).reduce((acc, cat) => {
       acc[cat] = false;
       return acc;
     }, {} as Record<string, boolean>);
+
+    initialExpanded["Supersets"] = false;
+    initialExpanded["Sets & Reps"] = false;
+    initialExpanded["Timer"] = false;
+
     setExpanded(initialExpanded);
   }, [grouped]);
 
   const toggleCategory = (category: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     if (!(category in expanded)) return;
-
     setExpanded((prev) => ({
       ...prev,
       [category]: !prev[category],
@@ -58,15 +83,54 @@ const GroupedExercises = ({ grouped }: Props) => {
   const handleSelect = (text: string) => {
     const newItem: Item = { id: Date.now().toString(), text };
 
-    setSelected((prev) => {
-      if (focusedIndex === null || focusedIndex >= prev.length) {
-        return [...prev, newItem]; // Fallback to end
+    if (focused.groupId) {
+      if (focused.index === "superset-title") {
+        setSupersets((prev) =>
+          prev.map((group) =>
+            group.id === focused.groupId
+              ? {
+                  ...group,
+                  exercises: [...group.exercises, newItem],
+                }
+              : group
+          )
+        );
+      } else if (typeof focused.index === "number") {
+        setSupersets((prev) =>
+          prev.map((group) =>
+            group.id === focused.groupId
+              ? {
+                  ...group,
+                  exercises: [
+                    ...group.exercises.slice(0, (focused.index as number) + 1),
+                    newItem,
+                    ...group.exercises.slice((focused.index as number) + 1),
+                  ],
+                }
+              : group
+          )
+        );
+      } else {
+        setSupersets((prev) =>
+          prev.map((group) =>
+            group.id === focused.groupId
+              ? {
+                  ...group,
+                  exercises: [...group.exercises, newItem],
+                }
+              : group
+          )
+        );
       }
-
-      const updated = [...prev];
-      updated.splice(focusedIndex + 1, 0, newItem);
-      return updated;
-    });
+    } else if (typeof focused.index === "number") {
+      setSelected((prev) => {
+        const updated = [...prev];
+        updated.splice((focused.index as number) + 1, 0, newItem);
+        return updated;
+      });
+    } else {
+      setSelected((prev) => [...prev, newItem]);
+    }
   };
 
   const handleEdit = (text: string, index: number) => {
@@ -91,61 +155,143 @@ const GroupedExercises = ({ grouped }: Props) => {
   };
 
   const handleCopyWorkout = () => {
-    const text = selected.map((item) => item.text).join("\n");
-    Clipboard.setStringAsync(text); // for expo-clipboard
-    // Clipboard.setString(text); // for react-native Clipboard
+    let lines: string[] = [];
+
+    // Add main list items
+    if (selected.length > 0) {
+      lines.push(
+        ...selected.map((item) =>
+          item.setsReps ? `${item.text} (${item.setsReps})` : item.text
+        )
+      );
+    }
+
+    // Add supersets, each with title and exercises
+    supersets.forEach((group) => {
+      if (lines.length > 0) lines.push(""); // empty line before superset if not first
+      lines.push(group.type);
+      lines.push(
+        ...group.exercises.map((ex) =>
+          ex.setsReps ? `${ex.text} (${ex.setsReps})` : ex.text
+        )
+      );
+    });
+
+    // Add empty line at the end if there is any content
+    if (lines.length > 0) lines.push("");
+
+    Clipboard.setStringAsync(lines.join("\n"));
   };
 
-  const renderItem = ({ item, drag, isActive, getIndex }: any) => {
-    const index = getIndex();
+  const handleAddSuperset = (type: string) => {
+    setSupersets((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        type,
+        exercises: [],
+      },
+    ]);
+  };
 
-    return (
-      <ScaleDecorator>
-        <View style={[styles.draggableItem, isActive && styles.activeItem]}>
-          <TouchableOpacity
-            onLongPress={() => drag()}
-            disabled={isActive}
-            style={styles.dragHandle}
-          >
-            <Text style={styles.dragHandleText}>≡</Text>
-          </TouchableOpacity>
-
-          <TextInput
-            style={styles.input}
-            value={item.text}
-            onChangeText={(newText) => handleEdit(newText, index)}
-            onFocus={() => setFocusedIndex(index)}
-            multiline
-          />
-
-          <TouchableOpacity
-            onPress={() => handleInsertAfter(index)}
-            style={styles.addBtnSmall}
-          >
-            <Text style={styles.addBtnText}>＋</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => handleDelete(item.id)}
-            style={styles.deleteBtn}
-          >
-            <Text style={styles.deleteBtnText}>×</Text>
-          </TouchableOpacity>
-        </View>
-      </ScaleDecorator>
+  const handleEditSupersetExercise = (
+    supersetId: string,
+    idx: number,
+    text: string
+  ) => {
+    setSupersets((prev) =>
+      prev.map((group) =>
+        group.id === supersetId
+          ? {
+              ...group,
+              exercises: group.exercises.map((ex, i) =>
+                i === idx ? { ...ex, text } : ex
+              ),
+            }
+          : group
+      )
     );
   };
 
+  const handleEditSupersetSetsReps = (
+    supersetId: string,
+    idx: number,
+    setsReps: string
+  ) => {
+    setSupersets((prev) =>
+      prev.map((group) =>
+        group.id === supersetId
+          ? {
+              ...group,
+              exercises: group.exercises.map((ex, i) =>
+                i === idx ? { ...ex, setsReps } : ex
+              ),
+            }
+          : group
+      )
+    );
+  };
+
+  const handleAddBlankToSuperset = (
+    supersetId: string,
+    afterIdx: number | null
+  ) => {
+    setSupersets((prev) =>
+      prev.map((group) =>
+        group.id === supersetId
+          ? {
+              ...group,
+              exercises:
+                afterIdx !== null
+                  ? [
+                      ...group.exercises.slice(0, afterIdx + 1),
+                      { id: Date.now().toString(), text: "" },
+                      ...group.exercises.slice(afterIdx + 1),
+                    ]
+                  : [
+                      { id: Date.now().toString(), text: "" },
+                      ...group.exercises,
+                    ],
+            }
+          : group
+      )
+    );
+  };
+
+  const handleDeleteSuperset = (supersetId: string) => {
+    setSupersets((prev) => prev.filter((group) => group.id !== supersetId));
+  };
+
+  const handleEditSupersetTitle = (supersetId: string, newType: string) => {
+    setSupersets((prev) =>
+      prev.map((group) =>
+        group.id === supersetId ? { ...group, type: newType } : group
+      )
+    );
+  };
+
+  const handleEditSetsReps = (index: number, setsReps: string) => {
+    setSelected((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, setsReps } : item))
+    );
+  };
+
+  const handleClear = () => {
+    setSelected([]);
+    setSupersets([]);
+  };
+
+  // --- RENDER ---
   return (
     <View style={styles.container}>
-      {/* Left panel: Selected exercises */}
+      {/* Left panel */}
       <View
         style={[
           styles.selectedContainer,
           showExercises ? styles.selectedPartial : styles.selectedFull,
+          { flex: 1, position: "relative" },
         ]}
       >
-        {/* Header with Selected title and toggle button side by side */}
         <View style={styles.leftHeader}>
           <Text style={styles.panelTitle}>WOD</Text>
           <TouchableOpacity
@@ -161,9 +307,213 @@ const GroupedExercises = ({ grouped }: Props) => {
           </TouchableOpacity>
         </View>
 
+        {/* Superset Groups */}
+        {supersets.map((group) => (
+          <View
+            key={group.id}
+            style={{
+              marginBottom: 16,
+              padding: 10,
+              backgroundColor: "white",
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: "#e0e7ef",
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
+              <TextInput
+                style={{
+                  width: 40,
+                  height: 36,
+                  backgroundColor: "#fff",
+                  color: "#2563eb",
+                  fontWeight: "bold",
+                  fontSize: 16,
+                  borderWidth: 1,
+                  borderColor: "#2563eb",
+                  borderRadius: 8,
+                  textAlign: "center",
+                  marginRight: 8,
+                }}
+                keyboardType="numeric"
+                value={group.type.match(/\d+/)?.[0] || ""}
+                onChangeText={(num) =>
+                  handleEditSupersetTitle(
+                    group.id,
+                    `${num.replace(/[^0-9]/g, "")} Sets`
+                  )
+                }
+                onFocus={() =>
+                  setFocused({ groupId: group.id, index: "superset-title" })
+                }
+              />
+              <Text
+                style={{ color: "#2563eb", fontWeight: "bold", fontSize: 16 }}
+              >
+                Sets
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleDeleteSuperset(group.id)}
+                style={{
+                  marginLeft: "auto",
+                  backgroundColor: "#ef4444",
+                  borderRadius: 16,
+                  width: 32,
+                  height: 32,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}
+                >
+                  ×
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {/* Draggable list of exercises in the superset */}
+            <DraggableFlatList
+              data={group.exercises}
+              keyExtractor={(item) => item.id}
+              onDragEnd={({ data }) => {
+                setSupersets((prev) =>
+                  prev.map((g) =>
+                    g.id === group.id ? { ...g, exercises: data } : g
+                  )
+                );
+              }}
+              renderItem={({ item, drag, isActive, getIndex }) => {
+                const idx = getIndex();
+                return (
+                  <View>
+                    <View
+                      style={[
+                        styles.draggableItem,
+                        isActive && styles.activeItem,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        onLongPress={drag}
+                        disabled={isActive}
+                        style={styles.dragHandle}
+                      >
+                        <Text style={styles.dragHandleText}>≡</Text>
+                      </TouchableOpacity>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: "#fff",
+                            color: "#222",
+                            marginBottom: 6,
+                          },
+                        ]}
+                        value={item.text}
+                        onChangeText={(text) =>
+                          handleEditSupersetExercise(group.id, idx, text)
+                        }
+                        onFocus={() =>
+                          setFocused({ groupId: group.id, index: idx })
+                        }
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleAddBlankToSuperset(group.id, idx)}
+                        style={styles.addBtnSmall}
+                      >
+                        <Text style={styles.addBtnText}>＋</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSupersets((prev) =>
+                            prev.map((g) =>
+                              g.id === group.id
+                                ? {
+                                    ...g,
+                                    exercises: g.exercises.filter(
+                                      (item2) => item2.id !== item.id
+                                    ),
+                                  }
+                                : g
+                            )
+                          );
+                        }}
+                        style={styles.deleteBtn}
+                      >
+                        <Text style={styles.deleteBtnText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginLeft: 36,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={() =>
+                          setSetsRepsModal({
+                            visible: true,
+                            groupId: group.id,
+                            index: idx,
+                            value: item.setsReps || "",
+                          })
+                        }
+                        style={[
+                          styles.dumbbellBtn,
+                          item.setsReps && {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            width: undefined, // allow width to grow with text
+                            minWidth: 40,
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                          },
+                        ]}
+                      >
+                        {/* <Icon name="dumbbell" size={10} color="#2563eb" /> */}
+                        {item.setsReps ? (
+                          <Text
+                            style={{
+                              color: "#2563eb",
+                              fontSize: 14,
+                              marginLeft: 6,
+                              fontWeight: "bold",
+                              flexShrink: 1,
+                            }}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {item.setsReps}
+                          </Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              }}
+            />
+            {/* Show "Add Exercise" button only if there are no items */}
+            {group.exercises.length === 0 && (
+              <TouchableOpacity
+                style={[styles.addBtn, { marginTop: 4 }]}
+                onPress={() => handleAddBlankToSuperset(group.id, null)}
+              >
+                <Text style={styles.addBtnText}>+ Add Exercise</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+
         {selected.length === 0 && (
           <TouchableOpacity style={styles.addBtn} onPress={handleAddBlank}>
-            <Text style={styles.addBtnText}>+ Add Blank</Text>
+            <Text style={styles.addBtnText}>+ Add Exercise</Text>
           </TouchableOpacity>
         )}
 
@@ -174,23 +524,149 @@ const GroupedExercises = ({ grouped }: Props) => {
             data={selected}
             onDragEnd={({ data }) => setSelected(data)}
             keyExtractor={(item) => item.id}
-            renderItem={renderItem}
+            renderItem={({ item, drag, isActive, getIndex }) => {
+              const index = getIndex();
+              return (
+                <ScaleDecorator>
+                  <View>
+                    <View
+                      style={[
+                        styles.draggableItem,
+                        isActive && styles.activeItem,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        onLongPress={() => drag()}
+                        disabled={isActive}
+                        style={styles.dragHandle}
+                      >
+                        <Text style={styles.dragHandleText}>≡</Text>
+                      </TouchableOpacity>
+                      <TextInput
+                        style={styles.input}
+                        value={item.text}
+                        onChangeText={(newText) => handleEdit(newText, index)}
+                        onFocus={() => setFocused({ groupId: null, index })}
+                        multiline
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleInsertAfter(index)}
+                        style={styles.addBtnSmall}
+                      >
+                        <Text style={styles.addBtnText}>＋</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(item.id)}
+                        style={styles.deleteBtn}
+                      >
+                        <Text style={styles.deleteBtnText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginLeft: 36,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={() =>
+                          setSetsRepsModal({
+                            visible: true,
+                            groupId: null,
+                            index,
+                            value: item.setsReps || "",
+                          })
+                        }
+                        style={[
+                          styles.dumbbellBtn,
+                          item.setsReps && {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            width: undefined, // allow width to grow with text
+                            minWidth: 40,
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                          },
+                        ]}
+                      >
+                        <Icon name="dumbbell" size={16} color="#2563eb" />
+                        {item.setsReps ? (
+                          <Text
+                            style={{
+                              color: "#2563eb",
+                              fontSize: 13,
+                              marginLeft: 6,
+                              fontWeight: "bold",
+                              flexShrink: 1,
+                            }}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {item.setsReps}
+                          </Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </ScaleDecorator>
+              );
+            }}
           />
         )}
-        {selected.length > 0 && (
-          <TouchableOpacity style={styles.copyBtn} onPress={handleCopyWorkout}>
+
+        {/* Bottom buttons always visible */}
+        <View
+          style={{
+            width: "100%",
+            position: "absolute",
+            left: 0,
+            bottom: 0,
+            backgroundColor: "#f8f9fa",
+            paddingVertical: 12,
+            borderTopWidth: 1,
+            borderTopColor: "#e5e7eb",
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10,
+          }}
+        >
+          <TouchableOpacity
+            style={[
+              styles.copyBtn,
+              { flex: 1, marginHorizontal: 8, marginTop: 0 },
+            ]}
+            onPress={handleCopyWorkout}
+          >
             <Text style={styles.copyBtnText}>📋 Copy Workout</Text>
           </TouchableOpacity>
-        )}
+          <TouchableOpacity
+            style={[
+              styles.copyBtn,
+              {
+                backgroundColor: "#ef4444",
+                flex: 1,
+                marginHorizontal: 8,
+                marginTop: 0,
+              },
+            ]}
+            onPress={handleClear}
+          >
+            <Text style={styles.copyBtnText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Right panel: Exercise buttons */}
+      {/* Right panel */}
       {showExercises && (
         <View style={styles.exerciseContainer}>
           <ScrollView
             contentContainerStyle={styles.exerciseScrollContent}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Exercise Groups */}
             {Object.entries(grouped || {}).map(([category, exercises]) => (
               <View key={category} style={styles.categorySection}>
                 <TouchableOpacity
@@ -215,9 +691,233 @@ const GroupedExercises = ({ grouped }: Props) => {
                   ))}
               </View>
             ))}
+
+            {/* Supersets Dropdown */}
+            <View style={[styles.categorySection, styles.presetsSection]}>
+              <TouchableOpacity
+                onPress={() => toggleCategory("Supersets")}
+                style={[styles.categoryButton, styles.presetsCategoryButton]}
+              >
+                <Text style={[styles.categoryText, styles.presetsCategoryText]}>
+                  {expanded["Supersets"] ? "▼" : "▶"} Supersets
+                </Text>
+              </TouchableOpacity>
+
+              {expanded["Supersets"] &&
+                ["2 Sets", "3 Sets", "4 Sets"].map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={styles.presetButton}
+                    onPress={() => handleAddSuperset(preset)}
+                  >
+                    <Text style={styles.presetButtonText}>{preset}</Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+
+            {/* Sets & Reps Dropdown */}
+            <View style={[styles.categorySection, styles.presetsSection]}>
+              <TouchableOpacity
+                onPress={() => toggleCategory("Sets & Reps")}
+                style={[styles.categoryButton, styles.presetsCategoryButton]}
+              >
+                <Text style={[styles.categoryText, styles.presetsCategoryText]}>
+                  {expanded["Sets & Reps"] ? "▼" : "▶"} Sets & Reps
+                </Text>
+              </TouchableOpacity>
+
+              {expanded["Sets & Reps"] &&
+                [
+                  "(10 lbs) x 10 x 3",
+                  "(20 lbs) x 10 x 3",
+                  "(15 lbs x 2) x 10 x 3",
+                  "(20 lbs x 2) x 8 x 3",
+                ].map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={styles.presetButton}
+                    onPress={() => {
+                      // If a workout input is focused, add sets&reps to it
+                      if (
+                        focused.groupId &&
+                        typeof focused.index === "number"
+                      ) {
+                        handleEditSupersetSetsReps(
+                          focused.groupId,
+                          focused.index,
+                          preset
+                        );
+                      } else if (typeof focused.index === "number") {
+                        handleEditSetsReps(focused.index, preset);
+                      }
+                    }}
+                  >
+                    <Text style={styles.presetButtonText}>{preset}</Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+
+            {/* Timer Dropdown */}
+            <View style={[styles.categorySection, styles.presetsSection]}>
+              <TouchableOpacity
+                onPress={() => toggleCategory("Timer")}
+                style={[styles.categoryButton, styles.presetsCategoryButton]}
+              >
+                <Text style={[styles.categoryText, styles.presetsCategoryText]}>
+                  {expanded["Timer"] ? "▼" : "▶"} Timer
+                </Text>
+              </TouchableOpacity>
+
+              {expanded["Timer"] &&
+                ["1 min", "2 mins", "3 mins"].map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={styles.presetButton}
+                    onPress={() => handleSelect(preset)}
+                  >
+                    <Text style={styles.presetButtonText}>{preset}</Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
           </ScrollView>
         </View>
       )}
+
+      {/* Sets & Reps Modal */}
+      <Modal
+        visible={setsRepsModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setSetsRepsModal((prev) => ({ ...prev, visible: false }))
+        }
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              padding: 24,
+              borderRadius: 12,
+              width: 300,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{ fontWeight: "bold", fontSize: 18, marginBottom: 12 }}
+            >
+              Weights & Sets & Reps
+            </Text>
+            {/* Preset options */}
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                marginBottom: 10,
+                justifyContent: "center",
+              }}
+            >
+              {[
+                "(10 lbs) x 10 x 3",
+                "(20 lbs) x 10 x 3",
+                "(15 lbs x 2) x 10 x 3",
+                "(20 lbs x 2) x 8 x 3",
+              ].map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  style={{
+                    backgroundColor: "#e6f0ff",
+                    borderRadius: 8,
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    margin: 4,
+                  }}
+                  onPress={() =>
+                    setSetsRepsModal((prev) => ({ ...prev, value: preset }))
+                  }
+                >
+                  <Text style={{ color: "#2563eb", fontWeight: "bold" }}>
+                    {preset}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: "#ccc",
+                borderRadius: 8,
+                padding: 8,
+                width: "100%",
+                fontSize: 16,
+                marginBottom: 16,
+              }}
+              value={setsRepsModal.value}
+              onChangeText={(v) =>
+                setSetsRepsModal((prev) => ({ ...prev, value: v }))
+              }
+              placeholder="e.g. (10 lbs) x 10 x 3"
+              autoFocus
+            />
+            <View style={{ flexDirection: "row", width: "100%" }}>
+              <TouchableOpacity
+                style={[
+                  styles.copyBtn,
+                  { flex: 1, marginHorizontal: 4, backgroundColor: "#3b82f6" },
+                ]}
+                onPress={() => {
+                  // Save sets & reps
+                  if (
+                    setsRepsModal.groupId &&
+                    typeof setsRepsModal.index === "number"
+                  ) {
+                    handleEditSupersetSetsReps(
+                      setsRepsModal.groupId,
+                      setsRepsModal.index,
+                      setsRepsModal.value
+                    );
+                  } else if (typeof setsRepsModal.index === "number") {
+                    handleEditSetsReps(
+                      setsRepsModal.index,
+                      setsRepsModal.value
+                    );
+                  }
+                  setSetsRepsModal({
+                    visible: false,
+                    groupId: null,
+                    index: null,
+                    value: "",
+                  });
+                }}
+              >
+                <Text style={styles.copyBtnText}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.copyBtn,
+                  { flex: 1, marginHorizontal: 4, backgroundColor: "#ef4444" },
+                ]}
+                onPress={() =>
+                  setSetsRepsModal({
+                    visible: false,
+                    groupId: null,
+                    index: null,
+                    value: "",
+                  })
+                }
+              >
+                <Text style={styles.copyBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -248,7 +948,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
   },
-
   panelTitle: {
     fontSize: 22,
     fontWeight: "700",
@@ -346,7 +1045,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#555",
   },
-
   addBtnSmall: {
     marginLeft: 5,
     paddingHorizontal: 8,
@@ -354,11 +1052,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#3b82f6",
     borderRadius: 20,
     justifyContent: "center",
-    shadowColor: "#3b82f6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
     marginTop: -3,
   },
   addBtnText: {
@@ -374,11 +1067,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#ef4444",
     borderRadius: 20,
     justifyContent: "center",
-    shadowColor: "#ef4444",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
     marginTop: -3,
   },
   deleteBtnText: {
@@ -388,7 +1076,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   exerciseScrollContent: {
-    paddingBottom: 80, // extra space to prevent last item from being hidden
+    paddingBottom: 80,
   },
   copyBtn: {
     backgroundColor: "#3b82f6",
@@ -400,5 +1088,37 @@ const styles = StyleSheet.create({
   copyBtnText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  presetsSection: {},
+  presetsCategoryButton: {
+    backgroundColor: "#1a73e8",
+  },
+  presetsCategoryText: {
+    color: "white",
+    fontWeight: "700",
+  },
+  presetButton: {
+    backgroundColor: "#f1f1f1",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  presetButtonText: {
+    fontSize: 15,
+    color: "#333",
+  },
+  dumbbellBtn: {
+    backgroundColor: "#e6f0ff",
+    borderRadius: 8,
+    width: 40,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+    marginTop: 2,
+    marginBottom: 2,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
 });
