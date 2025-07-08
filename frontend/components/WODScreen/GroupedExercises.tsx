@@ -16,6 +16,8 @@ import DraggableFlatList, {
 } from "react-native-draggable-flatlist";
 import * as Clipboard from "expo-clipboard";
 import Icon from "react-native-vector-icons/FontAwesome5";
+import { TouchableWithoutFeedback } from "react-native";
+import { BlurView } from "expo-blur";
 
 type Props = {
   grouped: Record<string, string[]>;
@@ -45,6 +47,7 @@ const GroupedExercises = ({ grouped }: Props) => {
   const [selected, setSelected] = useState<Item[]>([]);
   const [supersets, setSupersets] = useState<SupersetGroup[]>([]);
   const [showExercises, setShowExercises] = useState(true);
+  const [showFabMenu, setShowFabMenu] = useState(false);
   const [focused, setFocused] = useState<{
     groupId: string | null;
     index: number | string | null;
@@ -617,7 +620,7 @@ const GroupedExercises = ({ grouped }: Props) => {
         )}
 
         {/* Bottom buttons always visible */}
-        <View
+        {/* <View
           style={{
             width: "100%",
             position: "absolute",
@@ -656,7 +659,7 @@ const GroupedExercises = ({ grouped }: Props) => {
           >
             <Text style={styles.copyBtnText}>Clear</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
 
       {/* Right panel */}
@@ -918,6 +921,59 @@ const GroupedExercises = ({ grouped }: Props) => {
           </View>
         </View>
       </Modal>
+      {showFabMenu && (
+        <>
+          <TouchableWithoutFeedback onPress={() => setShowFabMenu(false)}>
+            <BlurView intensity={5} tint="dark" style={styles.fabMenuOverlay} />
+          </TouchableWithoutFeedback>
+          <View style={styles.fabMenu}>
+            <TouchableOpacity
+              style={styles.fabMenuBtn}
+              onPress={() => {
+                // Your dumbbell action here
+                setShowFabMenu(false);
+              }}
+            >
+              <Icon name="dumbbell" size={20} color="#2563eb" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabMenuBtn}
+              onPress={() => {
+                // Your stopwatch action here
+                setShowFabMenu(false);
+              }}
+            >
+              <Icon name="stopwatch" size={20} color="#2563eb" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabMenuBtn}
+              onPress={() => {
+                handleCopyWorkout();
+                setShowFabMenu(false);
+              }}
+            >
+              <Icon name="copy" size={20} color="#2563eb" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabMenuBtn}
+              onPress={() => {
+                handleClear();
+                setShowFabMenu(false);
+              }}
+            >
+              <Icon name="trash" size={20} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowFabMenu((prev) => !prev)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -931,7 +987,7 @@ const styles = StyleSheet.create({
   },
   selectedContainer: {
     padding: 12,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
   },
   selectedPartial: {
     width: "60%",
@@ -1120,5 +1176,58 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     paddingHorizontal: 0,
     paddingVertical: 0,
+  },
+  fab: {
+    position: "absolute",
+    right: 24,
+    bottom: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+    zIndex: 100,
+  },
+  fabText: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "bold",
+    marginTop: -2,
+  },
+  fabMenu: {
+    position: "absolute",
+    right: 24,
+    bottom: 100,
+    flexDirection: "column",
+    alignItems: "flex-end",
+    zIndex: 101,
+  },
+  fabMenuBtn: {
+    backgroundColor: "#e6f0ff",
+    borderRadius: 20,
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  fabMenuOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
   },
 });
