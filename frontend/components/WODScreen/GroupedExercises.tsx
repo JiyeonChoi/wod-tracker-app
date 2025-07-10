@@ -480,7 +480,6 @@ const GroupedExercises = ({ grouped }: Props) => {
                           },
                         ]}
                       >
-                        {/* <Icon name="dumbbell" size={10} color="#2563eb" /> */}
                         {item.setsReps ? (
                           <Text
                             style={{
@@ -552,11 +551,24 @@ const GroupedExercises = ({ grouped }: Props) => {
                         onFocus={() => setFocused({ groupId: null, index })}
                         multiline
                       />
-                      <TouchableOpacity
+                      {/* <TouchableOpacity
                         onPress={() => handleInsertAfter(index)}
                         style={styles.addBtnSmall}
                       >
                         <Text style={styles.addBtnText}>＋</Text>
+                      </TouchableOpacity> */}
+                      <TouchableOpacity
+                        onPress={() =>
+                          setSetsRepsModal({
+                            visible: true,
+                            groupId: null,
+                            index,
+                            value: item.setsReps || "",
+                          })
+                        }
+                        style={styles.dumbbellBtn}
+                      >
+                        <Icon name="dumbbell" size={16} color="#fff" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(item.id)}
@@ -573,34 +585,32 @@ const GroupedExercises = ({ grouped }: Props) => {
                         marginBottom: 4,
                       }}
                     >
-                      <TouchableOpacity
-                        onPress={() =>
-                          setSetsRepsModal({
-                            visible: true,
-                            groupId: null,
-                            index,
-                            value: item.setsReps || "",
-                          })
-                        }
-                        style={[
-                          styles.dumbbellBtn,
-                          item.setsReps && {
-                            flexDirection: "row",
-                            alignItems: "center",
-                            width: undefined, // allow width to grow with text
-                            minWidth: 40,
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                          },
-                        ]}
-                      >
-                        <Icon name="dumbbell" size={16} color="#2563eb" />
-                        {item.setsReps ? (
+                      {item.setsReps ? (
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSetsRepsModal({
+                              visible: true,
+                              groupId: null,
+                              index,
+                              value: item.setsReps || "",
+                            })
+                          }
+                          style={[
+                            styles.setsRepsBtn,
+                            {
+                              flexDirection: "row",
+                              alignItems: "center",
+                              width: undefined, // allow width to grow with text
+                              minWidth: 40,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                            },
+                          ]}
+                        >
                           <Text
                             style={{
                               color: "#2563eb",
                               fontSize: 13,
-                              marginLeft: 6,
                               fontWeight: "bold",
                               flexShrink: 1,
                             }}
@@ -609,8 +619,8 @@ const GroupedExercises = ({ grouped }: Props) => {
                           >
                             {item.setsReps}
                           </Text>
-                        ) : null}
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   </View>
                 </ScaleDecorator>
@@ -1164,7 +1174,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#333",
   },
-  dumbbellBtn: {
+  setsRepsBtn: {
     backgroundColor: "#e6f0ff",
     borderRadius: 8,
     width: 40,
@@ -1172,6 +1182,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
+    marginTop: 2,
+    marginBottom: 2,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  dumbbellBtn: {
+    backgroundColor: "#3b82f6", // match the + button color
+    borderRadius: 15, // match the + button radius
+    width: 32, // match the + button size
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 0,
+    marginLeft: 5,
     marginTop: 2,
     marginBottom: 2,
     paddingHorizontal: 0,
