@@ -296,72 +296,6 @@ const GroupedExercises = ({ grouped }: Props) => {
         ]}
       >
         <View style={styles.leftHeader}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            {/* Add blank item */}
-            <TouchableOpacity
-              style={styles.addBtnSmall}
-              onPress={() => {
-                if (typeof focused.index === "number") {
-                  const updated = [...selected];
-                  updated.splice(focused.index + 1, 0, {
-                    id: Date.now().toString(),
-                    text: "",
-                  });
-                  setSelected(updated);
-                } else {
-                  setSelected((prev) => [
-                    ...prev,
-                    { id: Date.now().toString(), text: "" },
-                  ]);
-                }
-              }}
-            >
-              <Text style={styles.addBtnText}>＋</Text>
-            </TouchableOpacity>
-
-            {/* Add line item */}
-            <TouchableOpacity
-              style={[styles.addBtnSmall, { marginLeft: 4 }]}
-              onPress={() => {
-                if (typeof focused.index === "number") {
-                  const updated = [...selected];
-                  updated.splice(focused.index + 1, 0, {
-                    id: Date.now().toString(),
-                    text: "---",
-                  });
-                  setSelected(updated);
-                } else {
-                  setSelected((prev) => [
-                    ...prev,
-                    { id: Date.now().toString(), text: "---" },
-                  ]);
-                }
-              }}
-            >
-              <Text style={styles.addBtnText}>─</Text>
-            </TouchableOpacity>
-
-            {/* Add "3 Sets" preset */}
-            <TouchableOpacity
-              style={[styles.addBtnSmall, { marginLeft: 4 }]}
-              onPress={() => {
-                const itemsToAdd = [
-                  { id: Date.now().toString() + "-line", text: "---" },
-                  { id: Date.now().toString() + "-main", text: "3 Sets" },
-                ];
-                if (typeof focused.index === "number") {
-                  const updated = [...selected];
-                  updated.splice(focused.index + 1, 0, ...itemsToAdd);
-                  setSelected(updated);
-                } else {
-                  setSelected((prev) => [...prev, ...itemsToAdd]);
-                }
-              }}
-            >
-              <Text style={styles.addBtnText}>3</Text>
-            </TouchableOpacity>
-          </View>
-
           <Text style={styles.panelTitle}>WOD</Text>
 
           <TouchableOpacity
@@ -374,6 +308,77 @@ const GroupedExercises = ({ grouped }: Props) => {
             style={styles.toggleBtnSmall}
           >
             <Text style={styles.toggleBtnText}>🏋️</Text>
+          </TouchableOpacity>
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 10,
+          }}
+        >
+          {/* Add blank item */}
+          <TouchableOpacity
+            style={styles.addBtnSmall}
+            onPress={() => {
+              if (typeof focused.index === "number") {
+                const updated = [...selected];
+                updated.splice(focused.index + 1, 0, {
+                  id: Date.now().toString(),
+                  text: "",
+                });
+                setSelected(updated);
+              } else {
+                setSelected((prev) => [
+                  ...prev,
+                  { id: Date.now().toString(), text: "" },
+                ]);
+              }
+            }}
+          >
+            <Text style={styles.addBtnText}>＋</Text>
+          </TouchableOpacity>
+
+          {/* Add line item */}
+          <TouchableOpacity
+            style={[styles.addBtnSmall, { marginLeft: 4 }]}
+            onPress={() => {
+              if (typeof focused.index === "number") {
+                const updated = [...selected];
+                updated.splice(focused.index + 1, 0, {
+                  id: Date.now().toString(),
+                  text: "---",
+                });
+                setSelected(updated);
+              } else {
+                setSelected((prev) => [
+                  ...prev,
+                  { id: Date.now().toString(), text: "---" },
+                ]);
+              }
+            }}
+          >
+            <Text style={styles.addBtnText}>─</Text>
+          </TouchableOpacity>
+
+          {/* Add "3 Sets" preset */}
+          <TouchableOpacity
+            style={[styles.addBtnSmall, { marginLeft: 4 }]}
+            onPress={() => {
+              const itemsToAdd = [
+                { id: Date.now().toString() + "-line", text: "---" },
+                { id: Date.now().toString() + "-main", text: "3 Sets" },
+              ];
+              if (typeof focused.index === "number") {
+                const updated = [...selected];
+                updated.splice(focused.index + 1, 0, ...itemsToAdd);
+                setSelected(updated);
+              } else {
+                setSelected((prev) => [...prev, ...itemsToAdd]);
+              }
+            }}
+          >
+            <Text style={styles.addBtnText}>3</Text>
           </TouchableOpacity>
         </View>
         {/* Superset Groups */}
