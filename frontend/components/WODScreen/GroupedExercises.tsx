@@ -296,7 +296,74 @@ const GroupedExercises = ({ grouped }: Props) => {
         ]}
       >
         <View style={styles.leftHeader}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {/* Add blank item */}
+            <TouchableOpacity
+              style={styles.addBtnSmall}
+              onPress={() => {
+                if (typeof focused.index === "number") {
+                  const updated = [...selected];
+                  updated.splice(focused.index + 1, 0, {
+                    id: Date.now().toString(),
+                    text: "",
+                  });
+                  setSelected(updated);
+                } else {
+                  setSelected((prev) => [
+                    ...prev,
+                    { id: Date.now().toString(), text: "" },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.addBtnText}>＋</Text>
+            </TouchableOpacity>
+
+            {/* Add line item */}
+            <TouchableOpacity
+              style={[styles.addBtnSmall, { marginLeft: 4 }]}
+              onPress={() => {
+                if (typeof focused.index === "number") {
+                  const updated = [...selected];
+                  updated.splice(focused.index + 1, 0, {
+                    id: Date.now().toString(),
+                    text: "---",
+                  });
+                  setSelected(updated);
+                } else {
+                  setSelected((prev) => [
+                    ...prev,
+                    { id: Date.now().toString(), text: "---" },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.addBtnText}>─</Text>
+            </TouchableOpacity>
+
+            {/* Add "3 Sets" preset */}
+            <TouchableOpacity
+              style={[styles.addBtnSmall, { marginLeft: 4 }]}
+              onPress={() => {
+                const itemsToAdd = [
+                  { id: Date.now().toString() + "-line", text: "---" },
+                  { id: Date.now().toString() + "-main", text: "3 Sets" },
+                ];
+                if (typeof focused.index === "number") {
+                  const updated = [...selected];
+                  updated.splice(focused.index + 1, 0, ...itemsToAdd);
+                  setSelected(updated);
+                } else {
+                  setSelected((prev) => [...prev, ...itemsToAdd]);
+                }
+              }}
+            >
+              <Text style={styles.addBtnText}>3</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.panelTitle}>WOD</Text>
+
           <TouchableOpacity
             onPress={() => {
               LayoutAnimation.configureNext(
@@ -309,7 +376,6 @@ const GroupedExercises = ({ grouped }: Props) => {
             <Text style={styles.toggleBtnText}>🏋️</Text>
           </TouchableOpacity>
         </View>
-
         {/* Superset Groups */}
         {supersets.map((group) => (
           <View
@@ -393,6 +459,44 @@ const GroupedExercises = ({ grouped }: Props) => {
               }}
               renderItem={({ item, drag, isActive, getIndex }) => {
                 const idx = getIndex();
+                if (item.text === "---") {
+                  return (
+                    <ScaleDecorator>
+                      <View>
+                        <View
+                          style={[
+                            styles.draggableItem,
+                            isActive && styles.activeItem,
+                            { paddingVertical: 0 },
+                          ]}
+                        >
+                          <TouchableOpacity
+                            onLongPress={() => drag()}
+                            disabled={isActive}
+                            style={styles.dragHandle}
+                          >
+                            <Text style={styles.dragHandleText}>≡</Text>
+                          </TouchableOpacity>
+                          <View
+                            style={{
+                              flex: 1,
+                              height: 1,
+                              backgroundColor: "#bbb",
+                              marginVertical: 10,
+                              marginHorizontal: 8,
+                            }}
+                          />
+                          <TouchableOpacity
+                            onPress={() => handleDelete(item.id)}
+                            style={styles.deleteBtn}
+                          >
+                            <Text style={styles.deleteBtnText}>×</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </ScaleDecorator>
+                  );
+                }
                 return (
                   <View>
                     <View
@@ -512,13 +616,11 @@ const GroupedExercises = ({ grouped }: Props) => {
             )}
           </View>
         ))}
-
         {selected.length === 0 && (
           <TouchableOpacity style={styles.addBtn} onPress={handleAddBlank}>
             <Text style={styles.addBtnText}>+ Add Exercise</Text>
           </TouchableOpacity>
         )}
-
         {selected.length === 0 ? (
           <Text style={styles.placeholder}></Text>
         ) : (
@@ -528,6 +630,55 @@ const GroupedExercises = ({ grouped }: Props) => {
             keyExtractor={(item) => item.id}
             renderItem={({ item, drag, isActive, getIndex }) => {
               const index = getIndex();
+              // Render a line if the text is '---'
+              // ...inside renderItem for DraggableFlatList...
+              if (item.text === "---") {
+                const isFocused = focused.index === index && !focused.groupId;
+                return (
+                  <ScaleDecorator>
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setFocused({ groupId: null, index })}
+                      style={{ width: "100%" }}
+                    >
+                      <View
+                        style={[
+                          styles.draggableItem,
+                          isActive && styles.activeItem,
+                          { paddingVertical: 0 },
+                        ]}
+                      >
+                        {isFocused && (
+                          <TouchableOpacity
+                            onLongPress={() => drag()}
+                            disabled={isActive}
+                            style={styles.dragHandle}
+                          >
+                            <Text style={styles.dragHandleText}>≡</Text>
+                          </TouchableOpacity>
+                        )}
+                        <View
+                          style={{
+                            flex: 1,
+                            height: 1,
+                            backgroundColor: "#bbb",
+                            marginVertical: 10,
+                            marginHorizontal: 8,
+                          }}
+                        />
+                        {isFocused && (
+                          <TouchableOpacity
+                            onPress={() => handleDelete(item.id)}
+                            style={styles.deleteBtn}
+                          >
+                            <Text style={styles.deleteBtnText}>×</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  </ScaleDecorator>
+                );
+              }
               return (
                 <ScaleDecorator>
                   <View>
@@ -551,12 +702,6 @@ const GroupedExercises = ({ grouped }: Props) => {
                         onFocus={() => setFocused({ groupId: null, index })}
                         multiline
                       />
-                      {/* <TouchableOpacity
-                        onPress={() => handleInsertAfter(index)}
-                        style={styles.addBtnSmall}
-                      >
-                        <Text style={styles.addBtnText}>＋</Text>
-                      </TouchableOpacity> */}
                       <TouchableOpacity
                         onPress={() =>
                           setSetsRepsModal({
@@ -628,7 +773,6 @@ const GroupedExercises = ({ grouped }: Props) => {
             }}
           />
         )}
-
         {/* Bottom buttons always visible */}
         {/* <View
           style={{
@@ -1112,13 +1256,14 @@ const styles = StyleSheet.create({
     color: "#555",
   },
   addBtnSmall: {
-    marginLeft: 5,
     paddingHorizontal: 8,
     paddingVertical: 6,
     backgroundColor: "#3b82f6",
     borderRadius: 20,
     justifyContent: "center",
     marginTop: -3,
+    marginLeft: 0,
+    marginRight: 0,
   },
   addBtnText: {
     color: "#e6f0ff",
@@ -1253,5 +1398,23 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 100,
+  },
+  headerBtnOutline: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#3b82f6",
+    marginTop: -3,
+    marginLeft: 0,
+    marginRight: 0,
+  },
+  headerBtnOutlineText: {
+    color: "#3b82f6",
+    fontWeight: "bold",
+    fontSize: 16,
+    lineHeight: 16,
   },
 });
