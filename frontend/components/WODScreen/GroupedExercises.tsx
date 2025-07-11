@@ -750,10 +750,6 @@ const GroupedExercises = ({ grouped }: Props) => {
                             {
                               flexDirection: "row",
                               alignItems: "center",
-                              width: undefined, // allow width to grow with text
-                              minWidth: 40,
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
                             },
                           ]}
                         >
@@ -1194,10 +1190,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 10,
-    padding: 8,
+    paddingVertical: 6, // Add vertical padding for web
     fontSize: 15,
-    marginBottom: 5,
-    marginTop: 5,
+    lineHeight: 15,
     backgroundColor: "#fff",
     color: "#222",
     shadowColor: "#000",
@@ -1205,6 +1200,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    padding: 8,
+    paddingTop: 8,
+    marginBottom: 5,
+    marginTop: 5,
+
+    // Remove textAlignVertical for web
+    ...(Platform.OS !== "web" && { textAlignVertical: "center" }),
+    textAlign: "left",
+    height: 32,
   },
   addBtn: {
     backgroundColor: "#3b82f6",
@@ -1327,8 +1331,6 @@ const styles = StyleSheet.create({
   setsRepsBtn: {
     backgroundColor: "#e6f0ff",
     borderRadius: 8,
-    width: 40,
-    height: 30,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
@@ -1336,6 +1338,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     paddingHorizontal: 0,
     paddingVertical: 0,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   dumbbellBtn: {
     backgroundColor: "#3b82f6", // match the + button color
