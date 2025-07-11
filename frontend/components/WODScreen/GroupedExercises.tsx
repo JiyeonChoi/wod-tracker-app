@@ -163,9 +163,11 @@ const GroupedExercises = ({ grouped }: Props) => {
     // Add main list items
     if (selected.length > 0) {
       lines.push(
-        ...selected.map((item) =>
-          item.setsReps ? `${item.text} (${item.setsReps})` : item.text
-        )
+        ...selected.map((item) => {
+          if (item.text === "---") return ""; // blank line for ---
+          if (item.setsReps) return `${item.text} ${item.setsReps}`.trim();
+          return item.text;
+        })
       );
     }
 
@@ -174,9 +176,11 @@ const GroupedExercises = ({ grouped }: Props) => {
       if (lines.length > 0) lines.push(""); // empty line before superset if not first
       lines.push(group.type);
       lines.push(
-        ...group.exercises.map((ex) =>
-          ex.setsReps ? `${ex.text} (${ex.setsReps})` : ex.text
-        )
+        ...group.exercises.map((ex) => {
+          if (ex.text === "---") return "";
+          if (ex.setsReps) return `${ex.text} ${ex.setsReps}`.trim();
+          return ex.text;
+        })
       );
     });
 
