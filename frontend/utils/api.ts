@@ -1,6 +1,6 @@
 export const fetchGroupedExercises = async () => {
     try {
-        const res = await fetch("http://localhost:3001/api/grouped-exercises");
+        const res = await fetch("https://wod-tracker-app.onrender.com/api/grouped-exercises");
         const result = await res.json();
   
       if (result.success) {
